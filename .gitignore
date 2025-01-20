@@ -1,0 +1,19 @@
+# Python
+*.pyc
+__pycache__/
+env/
+venv/
+
+# Docker
+*.tar
+*.gz
+docker-compose.override.yml
+
+# Logs
+*.log
+
+# Database files
+*.sqlite3
+
+# Secrets or sensitive files
+.env
