@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>4K Menu Application</title>
+    <style>
+        .menu-item {
+            margin: 10px;
+            display: inline-block;
+            width: 200px;
+        }
+        .quantity-controls {
+            display: flex;
+            align-items: center;
+        }
+        .quantity-controls button {
+            padding: 5px;
+        }
+        .quantity-controls input {
+            width: 40px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <h1>Welcome to the 4K Menu</h1>
+    <div id="menu">
+        <!-- Menu items will be loaded here dynamically -->
+    </div>
+    <h2>Your Order</h2>
+    <ul id="order-list"></ul>
+    <button onclick="submitOrder()">Place Order</button>
+
+    <script>
+        let menuItems = [];
+        let orderItems = [];
+
+        // Load the menu items
+        fetch('/menu')
+            .then(response => response.json())
+            .then(data => {
+                menuItems = data;
+                const menuDiv = document.getElementById('menu');
+                menuItems.forEach(item => {
+                    const menuItemDiv = document.createElement('div');
+                    menuItemDiv.classList.add('menu-item');
+                    menuItemDiv.innerHTML = `
+                        <h3>${item.name}</h3>
+                        <p>${item.category}</p>
+                        <p>$${item.price.toFixed(2)}</p>
+                        <div class="quantity-controls">
+                            <button onclick="updateQuantity(${item.id}, -1)">-</button>
+                            <input type="number" id="quantity-${item.id}" value="0" min="0" />
+                            <button onclick="updateQuantity(${item.id}, 1)">+</button>
+                        </div>
+                    `;
+                    menuDiv.appendChild(menuItemDiv);
+                });
+            });
+
+        // Update item quantity
+        function updateQuantity(itemId, change) {
+            const quantityInput = document.getElementById(`quantity-${itemId}`);
+            let quantity = parseInt(quantityInput.value) + change;
+            if (quantity < 0) quantity = 0;
+            quantityInput.value = quantity;
+
+            if (quantity === 0) {
+                orderItems = orderItems.filter(item => item.id !== itemId);
+            } else {
+                const existingItem = orderItems.find(item => item.id === itemId);
+                if (existingItem) {
+                    existingItem.quantity = quantity;
+                } else {
+                    orderItems.push({ id: itemId, quantity });
+                }
+            }
+            updateOrderList();
+        }
+
+        // Update the order list in the UI
+        function updateOrderList() {
+            const orderList = document.getElementById('order-list');
+            orderList.innerHTML = '';
+            orderItems.forEach(item => {
+                const menuItem = menuItems.find(menu => menu.id === item.id);
+                const orderItemLi = document.createElement('li');
+                orderItemLi.textContent = `${menuItem.name} (x${item.quantity}) - $${(menuItem.price * item.quantity).toFixed(2)}`;
+                orderList.appendChild(orderItemLi);
+            });
+        }
+
+        // Submit the order
+        function submitOrder() {
+            const orderData = {
+                items: orderItems.map(item => {
+                    const menuItem = menuItems.find(menu => menu.id === item.id);
+                    return { id: item.id, quantity: item.quantity, price: menuItem.price };
+                })
+            };
+
+            fetch('/order', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(orderData)
+            })
+            .then(response => response.json())
+            .then(data => alert('Order placed successfully! Order ID: ' + data.order_id));
+        }
+    </script>
+</body>
+</html>
