@@ -21,6 +21,12 @@
             width: 40px;
             text-align: center;
         }
+        .loading {
+            display: none;
+        }
+        .loading.visible {
+            display: block;
+        }
     </style>
 </head>
 <body>
@@ -31,33 +37,42 @@
     <h2>Your Order</h2>
     <ul id="order-list"></ul>
     <button onclick="submitOrder()">Place Order</button>
+    <div id="loading" class="loading">Loading...</div>
 
     <script>
         let menuItems = [];
         let orderItems = [];
 
         // Load the menu items
-        fetch('/menu')
-            .then(response => response.json())
-            .then(data => {
-                menuItems = data;
-                const menuDiv = document.getElementById('menu');
-                menuItems.forEach(item => {
-                    const menuItemDiv = document.createElement('div');
-                    menuItemDiv.classList.add('menu-item');
-                    menuItemDiv.innerHTML = `
-                        <h3>${item.name}</h3>
-                        <p>${item.category}</p>
-                        <p>$${item.price.toFixed(2)}</p>
-                        <div class="quantity-controls">
-                            <button onclick="updateQuantity(${item.id}, -1)">-</button>
-                            <input type="number" id="quantity-${item.id}" value="0" min="0" />
-                            <button onclick="updateQuantity(${item.id}, 1)">+</button>
-                        </div>
-                    `;
-                    menuDiv.appendChild(menuItemDiv);
+        function loadMenu() {
+            document.getElementById('loading').classList.add('visible');
+            fetch('/menu')
+                .then(response => response.json())
+                .then(data => {
+                    menuItems = data;
+                    const menuDiv = document.getElementById('menu');
+                    menuItems.forEach(item => {
+                        const menuItemDiv = document.createElement('div');
+                        menuItemDiv.classList.add('menu-item');
+                        menuItemDiv.innerHTML = `
+                            <h3>${item.name}</h3>
+                            <p>${item.category}</p>
+                            <p>$${item.price.toFixed(2)}</p>
+                            <div class="quantity-controls">
+                                <button onclick="updateQuantity(${item.id}, -1)">-</button>
+                                <input type="number" id="quantity-${item.id}" value="0" min="0" />
+                                <button onclick="updateQuantity(${item.id}, 1)">+</button>
+                            </div>
+                        `;
+                        menuDiv.appendChild(menuItemDiv);
+                    });
+                    document.getElementById('loading').classList.remove('visible');
+                })
+                .catch(error => {
+                    document.getElementById('loading').classList.remove('visible');
+                    alert('Failed to load menu. Please try again later.');
                 });
-            });
+        }
 
         // Update item quantity
         function updateQuantity(itemId, change) {
@@ -106,8 +121,16 @@
                 body: JSON.stringify(orderData)
             })
             .then(response => response.json())
-            .then(data => alert('Order placed successfully! Order ID: ' + data.order_id));
+            .then(data => {
+                alert('Order placed successfully! Order ID: ' + data.order_id);
+            })
+            .catch(error => {
+                alert('Failed to place order. Please try again later.');
+            });
         }
+
+        // Load the menu when the page is ready
+        loadMenu();
     </script>
 </body>
 </html>
