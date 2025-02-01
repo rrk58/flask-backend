@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 from flask_sqlalchemy import SQLAlchemy
 import os
 
@@ -39,12 +39,12 @@ class OrderItem(db.Model):
     order = db.relationship('Order', backref='items')
     menu_item = db.relationship('MenuItem')
 
-# Initialize the database
-@app.before_first_request
-def create_tables():
-    db.create_all()
-
 # Endpoints
+
+@app.route('/')
+def index():
+    return render_template("index.html")
+
 @app.route('/menu', methods=['GET'])
 def get_menu():
     menu = MenuItem.query.all()
@@ -63,6 +63,36 @@ def create_order():
         db.session.add(order_item)
     db.session.commit()
     return jsonify({"order_id": order.id, "total_price": total_price}), 201
+    
+@app.route('/order/<int:order_id>/pay', methods=['POST'])
+def pay_order(order_id):
+    order = Order.query.get(order_id)
+    if not order:
+        return jsonify({"error": "Order not found"}), 404
+
+    order.payment_status = 'PAID'
+    db.session.commit()
+    return jsonify({"message": "Payment successful"}), 200
+
+@app.route('/order/<int:order_id>', methods=['GET'])
+def get_order(order_id):
+    order = Order.query.get(order_id)
+    if not order:
+        return jsonify({"error": "Order not found"}), 404
+
+    result = {
+        "order_id": order.id,
+        "total_price": order.total_price,
+        "payment_status": order.payment_status,
+        "items": [
+            {
+                "name": item.menu_item.name,
+                "price": item.menu_item.price,
+                "quantity": item.quantity,
+            } for item in order.items
+        ],
+    }
+    return jsonify(result), 200
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
